@@ -4,15 +4,11 @@ namespace WebScrapingProject
 {
     public class Parser : IHtmlParser
     {
-        public T Parse<T>(string html) where T : IHtmlParsable, new()
+        public void Parse(IHtmlParsable parsable, string html)
         {
             HtmlDocument doc = new();
             doc.LoadHtml(html);
-
-            var parsable = new T();
             parsable.ParseFromHtml(doc);
-
-            return parsable;
         }
     }
 }
