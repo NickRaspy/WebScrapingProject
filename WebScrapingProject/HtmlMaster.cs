@@ -1,17 +1,13 @@
 ﻿using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace WebScrapingProject
 {
-    public class HtmlMaster(IHtmlParser parser, IHtmlParsableProvider parsableProvider) : IHtmlMaster
+    public class HtmlMaster(IHtmlParser parser, IHtmlParsableProvider parsableProvider, ILogger logger) : IHtmlMaster
     {
         private readonly IHtmlParser _parser = parser;
         private readonly IHtmlParsableProvider _parsableProvider = parsableProvider;
+        private readonly ILogger _logger = logger;
+
         public bool ProcessHTML(string parsableName)
         {
             while (true)
@@ -32,7 +28,7 @@ namespace WebScrapingProject
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"\nОшибка при чтении файла: {ex.Message}");
+                    _logger.LogError($"[ERROR] Ошибка при чтении файла: {ex.Message}");
                     continue;
                 }
 
@@ -40,50 +36,50 @@ namespace WebScrapingProject
 
                 try
                 {
-                    _parser.Parse(parsable, html);
+                    _parser.Parse(parsable, html, _logger.LogError);
+                    if (parsable is News news)
+                    {
+                        if (ParsedDataToJson(news.newsData, Path.GetDirectoryName(htmlPath) ?? string.Empty))
+                        {
+                            Console.WriteLine("\nПарсинг окончен. JSON файл был сохранен в ту же папку, что и HTML");
+                            Console.WriteLine("\nЖелаете продолжить? (y/n, default - n) ");
+                            if (string.Equals(Console.ReadLine(), "y", StringComparison.CurrentCultureIgnoreCase))
+                                continue;
+                        }
+                        else
+                        {
+                            Console.WriteLine("\nПарсинг не удался. Попробуйте еще раз.");
+                        }
+                    }
+                    else
+                    {
+                        _logger.LogError("[ERROR] Неизвестный тип парсабла");
+                    }
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"\nОшибка при парсинге: {ex.Message}");
+                    _logger.LogError($"[ERROR] Ошибка при парсинге: {ex.Message}");
                     continue;
-                }
-
-                var dir = Path.GetDirectoryName(htmlPath) ?? string.Empty;
-
-                if (ParsedDataToJson(parsable, dir, parsableName))
-                {
-                    Console.WriteLine("\nПарсинг окончен. JSON файл был сохранен в ту же папку, что и HTML");
-                    Console.WriteLine("\nЖелаете продолжить? (y/n, default - n) ");
-                    if (string.Equals(Console.ReadLine(), "y", StringComparison.CurrentCultureIgnoreCase))
-                        continue;
-                }
-                else
-                {
-                    Console.WriteLine("\nПарсинг не удался. Попробуйте еще раз.");
                 }
                 break;
             }
             return true;
         }
 
-        private bool ParsedDataToJson(IHtmlParsable parsable, string dir, string parsableName = "")
+        private bool ParsedDataToJson(object data, string dir)
         {
             JsonSerializer serializer = new();
-
-            string? fileName = string.IsNullOrEmpty(parsableName) ? parsable.GetType().Name : parsableName;
-
-            string? jsonPath = Path.Combine(dir, $"{fileName}.json");
+            string jsonPath = Path.Combine(dir, "clean-news.json");
             try
             {
                 using StreamWriter sw = new(jsonPath);
                 using JsonWriter writer = new JsonTextWriter(sw);
-                serializer.Serialize(writer, parsable);
-
+                serializer.Serialize(writer, data);
                 return true;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"\nОшибка при сохранении JSON: {ex.Message}");
+                _logger.LogError($"[ERROR] Ошибка при сохранении JSON: {ex.Message}");
                 return false;
             }
         }

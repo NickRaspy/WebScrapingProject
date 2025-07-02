@@ -1,14 +1,14 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using System;
 
 namespace WebScrapingProject
 {
-    class Program
+    internal class Program
     {
-        static void Main(string[] args)
+        private static void Main(string[] args)
         {
             var services = new ServiceCollection();
 
+            services.AddSingleton<ILogger, FileLogger>();
             services.AddSingleton<IHtmlParser, Parser>();
             services.AddSingleton(new Dictionary<string, Func<IHtmlParsable>>
                 {

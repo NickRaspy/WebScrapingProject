@@ -1,89 +1,86 @@
-﻿using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace WebScrapingProject
+﻿namespace WebScrapingProject
 {
     public class Menu(IHtmlMaster htmlMaster, IHtmlParsableProvider parsableProvider) : IMenu
     {
         private readonly IHtmlMaster _htmlMaster = htmlMaster;
         private readonly IHtmlParsableProvider _parsableProvider = parsableProvider;
 
+        private const string WelcomeMessage = "Добро пожаловать!\n1. Начать\n2. Выход\n";
+        private const string InputPrompt = "\nВведите значение:";
+        private const string NotNumberError = "\nНе числовое значение. Попробуйте еще раз.";
+        private const string NoSuchOptionError = "\nТакой опции нет в списке.";
+        private const string ServiceListHeader = "Доступные сервисы, по которому будете извлекать данные:\n";
+        private const string ServiceProcessError = "\nОшибка при обработке выбранного сервиса.";
+
         public void Show()
         {
-            Welcome();
+            while (true)
+            {
+                Welcome();
+            }
         }
 
         private void Welcome()
         {
             Console.Clear();
+            Console.WriteLine(WelcomeMessage);
 
-            Console.WriteLine("Добро пожаловать!\n1. Начать\n2. Выход\n");
+            int parsedValue = ConsoleHelper.ReadInt(
+                InputPrompt,
+                NotNumberError
+            );
 
-            while (true)
+            switch (parsedValue)
             {
-                Console.WriteLine("\nВведите значение: ");
-                string? nonParsedValue = Console.ReadLine();
+                case 1:
+                    SelectParser();
+                    break;
 
-                if (!int.TryParse(nonParsedValue, out int parsedValue))
-                {
-                    Console.WriteLine("\nНе числовое значение. Попробуйте еще раз.");
-                    continue;
-                }
+                case 2:
+                    Environment.Exit(0);
+                    break;
 
-                switch (parsedValue)
-                {
-                    case 1:
-                        SelectParser();
-                        break;
-                    case 2:
-                        return;
-                    default:
-                        Console.WriteLine("\nТакой опции нет в списке.");
-                        continue;
-                }
-
-                break;
+                default:
+                    Console.WriteLine(NoSuchOptionError);
+                    break;
             }
         }
 
         private void SelectParser()
         {
-            Console.Clear();
-            Console.WriteLine("Доступные сервисы, по которому будете извлекать данные:\n");
-
-            List<string> parsablesNames = [.. _parsableProvider.GetAvailableParsables()];
-
-            for(int i = 0; i < parsablesNames.Count; i++)
-            {
-                Console.WriteLine($"{i+1}. {parsablesNames[i]}\n");
-            }
-
             while (true)
             {
-                Console.WriteLine("\nВведите значение: ");
-                string? nonParsedValue = Console.ReadLine();
+                Console.Clear();
+                Console.WriteLine(ServiceListHeader);
 
-                if (!int.TryParse(nonParsedValue, out int parsedValue))
+                List<string> parsablesNames = [.. _parsableProvider.GetAvailableParsables()];
+
+                for (int i = 0; i < parsablesNames.Count; i++)
                 {
-                    Console.WriteLine("\nНе числовое значение. Попробуйте еще раз.");
+                    Console.WriteLine($"{i + 1}. {parsablesNames[i]}\n");
+                }
+                Console.WriteLine("0. Вернуться в главное меню\n");
+
+                int parsedValue = ConsoleHelper.ReadInt(
+                    InputPrompt,
+                    NotNumberError
+                );
+
+                if (parsedValue == 0)
+                    return;
+
+                if (parsedValue < 1 || parsedValue > parsablesNames.Count)
+                {
+                    Console.WriteLine(NoSuchOptionError);
                     continue;
                 }
 
-                try
+                bool result = _htmlMaster.ProcessHTML(parsablesNames[parsedValue - 1]);
+                if (!result)
                 {
-                    _htmlMaster.ProcessHTML(parsablesNames[parsedValue-1]);
-                    break;
-                }
-                catch
-                {
-                    Console.WriteLine("\nТакой опции нет в списке.");
                     continue;
                 }
+                break;
             }
         }
     }
